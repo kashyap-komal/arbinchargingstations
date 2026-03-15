@@ -16,28 +16,18 @@ const stationSchema = z.object({
   pinCode: z.string().trim().min(3).max(10),
   connectorType: z.enum(CONNECTOR_TYPES),
   status: z.enum(STATION_STATUSES),
-  image: z
-    .string()
-    .trim()
-    .url()
-    .or(z.literal(""))
-    .optional(),
+  image: z.string().trim().url().or(z.literal("")).optional(),
   locationLink: z.string().trim().url(),
 });
 
 function hasAdminAccess(request: NextRequest) {
   const adminKey = process.env.ADMIN_KEY ?? "admin123";
-  const provided = request.headers.get("x-admin-key");
-  return provided === adminKey;
+  return request.headers.get("x-admin-key") === adminKey;
 }
 
 function parseId(idParam: string) {
   const id = Number(idParam);
-  if (!Number.isInteger(id) || id < 1) {
-    return null;
-  }
-
-  return id;
+  return Number.isInteger(id) && id >= 1 ? id : null;
 }
 
 export async function GET(
@@ -46,7 +36,6 @@ export async function GET(
 ) {
   const { id: idParam } = await params;
   const id = parseId(idParam);
-
   if (!id) {
     return NextResponse.json({ error: "Invalid station id." }, { status: 400 });
   }
@@ -56,10 +45,12 @@ export async function GET(
     if (!station) {
       return NextResponse.json({ error: "Station not found." }, { status: 404 });
     }
-
     return NextResponse.json({ station }, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Failed to fetch station." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch station." },
+      { status: 500 },
+    );
   }
 }
 
@@ -81,10 +72,7 @@ export async function PUT(
   const parsed = stationSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      {
-        error: "Invalid station payload.",
-        details: parsed.error.flatten(),
-      },
+      { error: "Invalid station payload.", details: parsed.error.flatten() },
       { status: 400 },
     );
   }
@@ -94,10 +82,12 @@ export async function PUT(
     if (!station) {
       return NextResponse.json({ error: "Station not found." }, { status: 404 });
     }
-
     return NextResponse.json({ station }, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Failed to update station." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update station." },
+      { status: 500 },
+    );
   }
 }
 
@@ -120,9 +110,11 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: "Station not found." }, { status: 404 });
     }
-
     return NextResponse.json({ success: true }, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Failed to delete station." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete station." },
+      { status: 500 },
+    );
   }
 }

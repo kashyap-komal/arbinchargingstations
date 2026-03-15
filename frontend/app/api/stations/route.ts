@@ -15,19 +15,13 @@ const stationSchema = z.object({
   pinCode: z.string().trim().min(3).max(10),
   connectorType: z.enum(CONNECTOR_TYPES),
   status: z.enum(STATION_STATUSES),
-  image: z
-    .string()
-    .trim()
-    .url()
-    .or(z.literal(""))
-    .optional(),
+  image: z.string().trim().url().or(z.literal("")).optional(),
   locationLink: z.string().trim().url(),
 });
 
 function hasAdminAccess(request: NextRequest) {
   const adminKey = process.env.ADMIN_KEY ?? "admin123";
-  const provided = request.headers.get("x-admin-key");
-  return provided === adminKey;
+  return request.headers.get("x-admin-key") === adminKey;
 }
 
 export async function GET() {
@@ -35,7 +29,10 @@ export async function GET() {
     const stations = getAllStations();
     return NextResponse.json({ stations }, { status: 200 });
   } catch {
-    return NextResponse.json({ error: "Failed to fetch stations." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch stations." },
+      { status: 500 },
+    );
   }
 }
 
@@ -46,13 +43,9 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
   const parsed = stationSchema.safeParse(body);
-
   if (!parsed.success) {
     return NextResponse.json(
-      {
-        error: "Invalid station payload.",
-        details: parsed.error.flatten(),
-      },
+      { error: "Invalid station payload.", details: parsed.error.flatten() },
       { status: 400 },
     );
   }
@@ -61,6 +54,9 @@ export async function POST(request: NextRequest) {
     const station = createStation(parsed.data);
     return NextResponse.json({ station }, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Failed to create station." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create station." },
+      { status: 500 },
+    );
   }
 }

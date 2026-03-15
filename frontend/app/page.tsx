@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+/* ─── Types ─────────────────────────────────────────────────────────────── */
 type StationStatus = "Operational" | "Maintenance";
 type ConnectorType = "CCS" | "Type 2" | "CHAdeMO" | "GB/T";
 
@@ -28,11 +29,12 @@ type StationForm = {
   locationLink: string;
 };
 
+/* ─── Constants ──────────────────────────────────────────────────────────── */
 const CONNECTOR_OPTIONS: ConnectorType[] = ["CCS", "Type 2", "CHAdeMO", "GB/T"];
 const STATUS_OPTIONS: StationStatus[] = ["Operational", "Maintenance"];
 const PUBLIC_ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY ?? "admin123";
 
-const INITIAL_FORM: StationForm = {
+const EMPTY_FORM: StationForm = {
   stationName: "",
   locationAddress: "",
   pinCode: "",
@@ -42,9 +44,10 @@ const INITIAL_FORM: StationForm = {
   locationLink: "",
 };
 
+/* ─── Page ───────────────────────────────────────────────────────────────── */
 export default function Home() {
   const [stations, setStations] = useState<Station[]>([]);
-  const [form, setForm] = useState<StationForm>(INITIAL_FORM);
+  const [form, setForm] = useState<StationForm>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adminKey, setAdminKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,22 +60,19 @@ export default function Home() {
   const isAdmin = adminKey === PUBLIC_ADMIN_KEY;
 
   const operationalCount = useMemo(
-    () => stations.filter((station) => station.status === "Operational").length,
+    () => stations.filter((s) => s.status === "Operational").length,
     [stations],
   );
 
+  /* ── data fetching ────────────────────────────────────────────────────── */
   const fetchStations = useCallback(async () => {
     setLoading(true);
     setError("");
-
     try {
-      const response = await fetch("/api/stations", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Could not load stations.");
-      }
-
-      const payload = (await response.json()) as { stations: Station[] };
-      setStations(payload.stations ?? []);
+      const res = await fetch("/api/stations", { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { stations: Station[] };
+      setStations(data.stations ?? []);
     } catch {
       setError("Unable to load charging station records.");
     } finally {
@@ -84,20 +84,20 @@ export default function Home() {
     fetchStations();
   }, [fetchStations]);
 
+  /* ── 1-second live interval ───────────────────────────────────────────── */
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
-      setSecondsOnPage((current) => current + 1);
+      setSecondsOnPage((n) => n + 1);
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  /* ── form submit (create / update) ───────────────────────────────────── */
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     if (!isAdmin) {
-      setError("Admin key is required to create or update stations.");
+      setError("Admin key required to create or update stations.");
       return;
     }
 
@@ -106,10 +106,10 @@ export default function Home() {
     setSuccess("");
 
     const method = editingId ? "PUT" : "POST";
-    const endpoint = editingId ? `/api/stations/${editingId}` : "/api/stations";
+    const url = editingId ? `/api/stations/${editingId}` : "/api/stations";
 
     try {
-      const response = await fetch(endpoint, {
+      const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -117,218 +117,233 @@ export default function Home() {
         },
         body: JSON.stringify(form),
       });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to save.");
 
-      const payload = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to save station.");
-      }
-
-      setForm(INITIAL_FORM);
+      setForm(EMPTY_FORM);
       setEditingId(null);
-      setSuccess(editingId ? "Station updated." : "Station created.");
+      setSuccess(editingId ? "Station updated successfully." : "Station created successfully.");
       await fetchStations();
-    } catch (submitError) {
-      const message = submitError instanceof Error ? submitError.message : "Failed to save station.";
-      setError(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save station.");
     } finally {
       setSubmitting(false);
     }
   }
 
+  /* ── delete ───────────────────────────────────────────────────────────── */
   async function handleDelete(id: number) {
     if (!isAdmin) {
-      setError("Admin key is required to delete stations.");
+      setError("Admin key required to delete stations.");
       return;
     }
-
     setError("");
     setSuccess("");
-
     try {
-      const response = await fetch(`/api/stations/${id}`, {
+      const res = await fetch(`/api/stations/${id}`, {
         method: "DELETE",
-        headers: {
-          "x-admin-key": adminKey,
-        },
+        headers: { "x-admin-key": adminKey },
       });
-
-      const payload = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Failed to delete station.");
-      }
-
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to delete.");
       setSuccess("Station deleted.");
-      if (editingId === id) {
-        setEditingId(null);
-        setForm(INITIAL_FORM);
-      }
+      if (editingId === id) { setEditingId(null); setForm(EMPTY_FORM); }
       await fetchStations();
-    } catch (deleteError) {
-      const message = deleteError instanceof Error ? deleteError.message : "Failed to delete station.";
-      setError(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete station.");
     }
   }
 
-  function startEdit(station: Station) {
-    setEditingId(station.id);
+  /* ── start edit ───────────────────────────────────────────────────────── */
+  function startEdit(s: Station) {
+    setEditingId(s.id);
     setForm({
-      stationName: station.stationName,
-      locationAddress: station.locationAddress,
-      pinCode: station.pinCode,
-      connectorType: station.connectorType,
-      status: station.status,
-      image: station.image ?? "",
-      locationLink: station.locationLink,
+      stationName: s.stationName,
+      locationAddress: s.locationAddress,
+      pinCode: s.pinCode,
+      connectorType: s.connectorType,
+      status: s.status,
+      image: s.image ?? "",
+      locationLink: s.locationLink,
     });
-    setSuccess("");
     setError("");
+    setSuccess("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setError("");
+    setSuccess("");
+  }
+
+  function field(key: keyof StationForm) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
   }
 
   return (
     <main className="page-shell">
+      {/* decorative background blobs */}
       <div className="ambient-orb ambient-one" aria-hidden="true" />
       <div className="ambient-orb ambient-two" aria-hidden="true" />
 
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="hero">
-        <p className="hero-kicker">ChargingStation Records</p>
-        <h1>Station Control Dashboard</h1>
-        <p className="hero-sub">Track station health, location links, and connector details in one live panel.</p>
+        <p className="hero-kicker">EV Infrastructure</p>
+        <h1>ChargingStation Manager</h1>
+        <p className="hero-sub">
+          Track station health, connector details, and live locations — all in one panel.
+        </p>
       </section>
 
-      <section className="stats-grid">
+      {/* ── Stats Bar (1s refresh) ───────────────────────────────────────── */}
+      <section className="stats-grid" aria-label="Live statistics">
         <article className="stat-tile">
           <span>Total Stations</span>
           <strong>{stations.length}</strong>
         </article>
         <article className="stat-tile">
-          <span>Operational Now</span>
-          <strong>{operationalCount}</strong>
+          <span>Operational</span>
+          <strong style={{ color: "var(--green)" }}>{operationalCount}</strong>
         </article>
         <article className="stat-tile">
-          <span>Live Time (1s refresh)</span>
-          <strong>{now.toLocaleTimeString()}</strong>
+          <span>In Maintenance</span>
+          <strong style={{ color: "var(--red)" }}>
+            {stations.length - operationalCount}
+          </strong>
         </article>
         <article className="stat-tile">
-          <span>Seconds On Page</span>
-          <strong>{secondsOnPage}</strong>
+          <span>Live Clock</span>
+          <strong style={{ fontSize: "1.2rem" }}>{now.toLocaleTimeString()}</strong>
+        </article>
+        <article className="stat-tile">
+          <span>Time on Page</span>
+          <strong>{secondsOnPage}s</strong>
         </article>
       </section>
 
+      {/* ── Admin Panel ──────────────────────────────────────────────────── */}
       <section className="admin-panel">
-        <h2>{editingId ? "Update Station" : "Add Station"}</h2>
-        <p>Only admins can create, update, or delete records.</p>
+        <h2>{editingId ? `Editing Station #${editingId}` : "Add New Station"}</h2>
+        <p>Provide your admin key to create, update, or delete station records.</p>
 
-        <label className="field-wrap">
-          <span>Admin Key</span>
-          <input
-            className="text-input"
-            type="password"
-            value={adminKey}
-            onChange={(event) => setAdminKey(event.target.value)}
-            placeholder="Enter admin key"
-          />
-        </label>
+        {/* Admin key row */}
+        <div className="key-row">
+          <label className="field-wrap" style={{ flex: 1, maxWidth: 320 }}>
+            <span>Admin Key</span>
+            <input
+              className="text-input"
+              type="password"
+              value={adminKey}
+              onChange={(e) => setAdminKey(e.target.value)}
+              placeholder="Enter admin key to unlock"
+              autoComplete="current-password"
+            />
+          </label>
+          <span className={`key-badge ${isAdmin ? "unlocked" : "locked"}`}>
+            {isAdmin ? "✓ Admin Unlocked" : "🔒 Locked"}
+          </span>
+        </div>
 
+        {/* Station form */}
         <form className="station-form" onSubmit={onSubmit}>
           <label className="field-wrap">
-            <span>Station Name</span>
+            <span>Station Name *</span>
             <input
               className="text-input"
               value={form.stationName}
-              onChange={(event) => setForm((current) => ({ ...current, stationName: event.target.value }))}
+              onChange={field("stationName")}
+              placeholder="e.g. Central EV Hub"
               required
             />
           </label>
 
           <label className="field-wrap">
-            <span>Location Address</span>
+            <span>Location Address *</span>
             <input
               className="text-input"
               value={form.locationAddress}
-              onChange={(event) => setForm((current) => ({ ...current, locationAddress: event.target.value }))}
+              onChange={field("locationAddress")}
+              placeholder="e.g. 42 MG Road, Bangalore"
               required
             />
           </label>
 
           <label className="field-wrap">
-            <span>Pin Code</span>
+            <span>Pin Code *</span>
             <input
               className="text-input"
               value={form.pinCode}
-              onChange={(event) => setForm((current) => ({ ...current, pinCode: event.target.value }))}
+              onChange={field("pinCode")}
+              placeholder="e.g. 560001"
               required
             />
           </label>
 
           <label className="field-wrap">
-            <span>Connector Type</span>
+            <span>Connector Type *</span>
             <select
               className="text-input"
               value={form.connectorType}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, connectorType: event.target.value as ConnectorType }))
-              }
+              onChange={field("connectorType")}
             >
-              {CONNECTOR_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
+              {CONNECTOR_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
               ))}
             </select>
           </label>
 
           <label className="field-wrap">
-            <span>Status</span>
+            <span>Status *</span>
             <select
               className="text-input"
               value={form.status}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, status: event.target.value as StationStatus }))
-              }
+              onChange={field("status")}
             >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
               ))}
             </select>
           </label>
 
           <label className="field-wrap">
-            <span>Image URL</span>
+            <span>Image URL (optional)</span>
             <input
               className="text-input"
               type="url"
               value={form.image}
-              onChange={(event) => setForm((current) => ({ ...current, image: event.target.value }))}
+              onChange={field("image")}
               placeholder="https://example.com/station.jpg"
             />
           </label>
 
           <label className="field-wrap">
-            <span>Location Link</span>
+            <span>Location Link (Google Maps) *</span>
             <input
               className="text-input"
               type="url"
               value={form.locationLink}
-              onChange={(event) => setForm((current) => ({ ...current, locationLink: event.target.value }))}
+              onChange={field("locationLink")}
               placeholder="https://maps.google.com/..."
               required
             />
           </label>
 
           <div className="form-actions">
-            <button className="btn btn-primary" type="submit" disabled={submitting || !isAdmin}>
-              {submitting ? "Saving..." : editingId ? "Update Station" : "Create Station"}
+            <button
+              className="btn btn-primary"
+              type="submit"
+              disabled={submitting || !isAdmin}
+            >
+              {submitting ? "Saving…" : editingId ? "Update Station" : "Create Station"}
             </button>
             {editingId ? (
               <button
                 className="btn btn-secondary"
                 type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(INITIAL_FORM);
-                }}
+                onClick={cancelEdit}
               >
                 Cancel Edit
               </button>
@@ -336,55 +351,96 @@ export default function Home() {
           </div>
         </form>
 
-        {error ? <p className="flash flash-error">{error}</p> : null}
+        {error   ? <p className="flash flash-error">{error}</p>   : null}
         {success ? <p className="flash flash-success">{success}</p> : null}
       </section>
 
+      {/* ── Station Cards ────────────────────────────────────────────────── */}
       <section className="cards-section">
         <div className="cards-header">
           <h2>All Charging Stations</h2>
-          <button className="btn btn-secondary" onClick={fetchStations} disabled={loading} type="button">
-            {loading ? "Refreshing..." : "Refresh"}
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={fetchStations}
+            disabled={loading}
+          >
+            {loading ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
 
-        {stations.length === 0 ? <p className="empty-state">No stations yet. Create your first record.</p> : null}
+        {!loading && stations.length === 0 ? (
+          <p className="empty-state">
+            No stations yet. Use the form above to create your first record.
+          </p>
+        ) : null}
 
         <div className="station-grid">
-          {stations.map((station) => (
-            <article className="station-card" key={station.id}>
+          {stations.map((s) => (
+            <article className="station-card" key={s.id}>
+              {/* Card header */}
               <header className="card-top">
-                <h3>{station.stationName}</h3>
-                <span className={`status-pill status-${station.status.toLowerCase()}`}>
+                <h3>{s.stationName}</h3>
+                <span
+                  className={`status-pill status-${s.status.toLowerCase()}`}
+                >
                   <span className="dot" />
-                  {station.status}
+                  {s.status}
                 </span>
               </header>
 
-              {station.image ? (
-                <img className="station-image" src={station.image} alt={station.stationName} loading="lazy" />
+              {/* Optional image */}
+              {s.image ? (
+                <img
+                  className="station-image"
+                  src={s.image}
+                  alt={s.stationName}
+                  loading="lazy"
+                />
               ) : null}
 
+              {/* Details */}
               <p>
-                <strong>Address:</strong> {station.locationAddress} ({station.pinCode})
+                <strong>Address:</strong> {s.locationAddress}
               </p>
               <p>
-                <strong>Connector:</strong> {station.connectorType}
-              </p>
-              <p>
-                <strong>Location Link:</strong>{" "}
-                <a href={station.locationLink} target="_blank" rel="noreferrer">
-                  Open in Maps
-                </a>
+                <strong>Pin Code:</strong> {s.pinCode}
               </p>
 
+              <div className="card-meta">
+                <span className="meta-tag">⚡ {s.connectorType}</span>
+                <a
+                  className="meta-tag"
+                  href={s.locationLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "var(--accent)", borderColor: "rgba(108,99,255,0.3)" }}
+                >
+                  📍 Open in Maps
+                </a>
+              </div>
+
+              <p className="card-timestamps">
+                Created: {new Date(s.createdAt).toLocaleString()} &nbsp;|&nbsp;
+                Updated: {new Date(s.updatedAt).toLocaleString()}
+              </p>
+
+              {/* Admin actions */}
               {isAdmin ? (
                 <div className="card-actions">
-                  <button className="btn btn-secondary" type="button" onClick={() => startEdit(station)}>
-                    Edit
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => startEdit(s)}
+                  >
+                    ✏ Edit
                   </button>
-                  <button className="btn btn-danger" type="button" onClick={() => handleDelete(station.id)}>
-                    Delete
+                  <button
+                    className="btn btn-danger"
+                    type="button"
+                    onClick={() => handleDelete(s.id)}
+                  >
+                    🗑 Delete
                   </button>
                 </div>
               ) : null}
