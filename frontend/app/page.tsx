@@ -184,14 +184,30 @@ export default function Home() {
   }
 
   return (
-    <main className="page-shell">
+    <>
+      {/* ── Sticky Header ──────────────────────────────────────────────────── */}
+      <header className="top-header">
+        <div className="header-logo">
+          <div className="logo-mark">A</div>
+          <span className="logo-text"><span>Arbin</span> ChargingStations</span>
+        </div>
+        <div className="header-admin">
+          <div className="admin-info">
+            <span className="admin-name">Komal Kumari</span>
+            <span className="admin-role">Admin</span>
+          </div>
+          <div className="admin-avatar">KK</div>
+        </div>
+      </header>
+
+      <main className="page-shell">
       {/* decorative background blobs */}
       <div className="ambient-orb ambient-one" aria-hidden="true" />
       <div className="ambient-orb ambient-two" aria-hidden="true" />
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="hero">
-        <p className="hero-kicker">EV Infrastructure</p>
+        <p className="hero-kicker">Arbin ChargingStations</p>
         <h1>ChargingStation Manager</h1>
         <p className="hero-sub">
           Track station health, connector details, and live locations — all in one panel.
@@ -449,5 +465,6 @@ export default function Home() {
         </div>
       </section>
     </main>
+    </>
   );
 }
