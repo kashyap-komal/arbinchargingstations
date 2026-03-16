@@ -1,6 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 
 export type StationStatus = "Operational" | "Maintenance";
 export type ConnectorType = "CCS" | "Type 2" | "CHAdeMO" | "GB/T";
@@ -89,82 +102,131 @@ const AdminPanel = ({
     setSuccess("");
   }
 
-  function field(key: keyof StationForm) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm({ ...form, [key]: e.target.value });
-  }
-
   return (
     <section className="admin-panel">
-      <h2>{editingId ? `Editing Station #${editingId}` : "Add New Station"}</h2>
-      <p>Provide your admin key to create, update, or delete station records.</p>
+      <Typography variant="h5" sx={{ mb: 1, fontWeight: 700 }}>
+        {editingId ? `Editing Station #${editingId}` : "Add New Station"}
+      </Typography>
+      <Typography sx={{ mb: 2, color: "rgba(255,255,255,0.7)" }}>
+        Provide your admin key to create, update, or delete station records.
+      </Typography>
 
-      {/* Admin key row */}
-      <div className="key-row">
-        <label className="field-wrap" style={{ flex: 1, maxWidth: 320 }}>
-          <span>Admin Key</span>
-          <input
-            className="text-input"
-            type="password"
-            value={adminKey}
-            onChange={(e) => setAdminKey(e.target.value)}
-            placeholder="Enter admin key to unlock"
-            autoComplete="current-password"
-          />
-        </label>
-        <span className={`key-badge ${isAdmin ? "unlocked" : "locked"}`}>
-          {isAdmin ? "✓ Admin Unlocked" : "🔒 Locked"}
-        </span>
-      </div>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mb: 2, alignItems: { md: "center" } }}>
+        <TextField
+          label="Admin Key"
+          type="password"
+          value={adminKey}
+          onChange={(e) => setAdminKey(e.target.value)}
+          placeholder="Enter admin key to unlock"
+          autoComplete="current-password"
+          fullWidth
+          sx={{ maxWidth: { md: 360 } }}
+        />
+        <Chip
+          label={isAdmin ? "Admin Unlocked" : "Locked"}
+          color={isAdmin ? "success" : "default"}
+          variant={isAdmin ? "filled" : "outlined"}
+        />
+      </Stack>
 
-      {/* Station form */}
-      <form className="station-form" onSubmit={onSubmit}>
-        <label className="field-wrap">
-          <span>Station Name *</span>
-          <input className="text-input" value={form.stationName} onChange={field("stationName")} placeholder="e.g. Central EV Hub" required />
-        </label>
-        <label className="field-wrap">
-          <span>Location Address *</span>
-          <input className="text-input" value={form.locationAddress} onChange={field("locationAddress")} placeholder="e.g. 42 MG Road, Bangalore" required />
-        </label>
-        <label className="field-wrap">
-          <span>Pin Code *</span>
-          <input className="text-input" value={form.pinCode} onChange={field("pinCode")} placeholder="e.g. 560001" required />
-        </label>
-        <label className="field-wrap">
-          <span>Connector Type *</span>
-          <select className="text-input" value={form.connectorType} onChange={field("connectorType")}>
-            {CONNECTOR_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </label>
-        <label className="field-wrap">
-          <span>Status *</span>
-          <select className="text-input" value={form.status} onChange={field("status")}>
-            {STATUS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </label>
-        <label className="field-wrap">
-          <span>Image URL (optional)</span>
-          <input className="text-input" type="url" value={form.image} onChange={field("image")} placeholder="https://example.com/station.jpg" />
-        </label>
-        <label className="field-wrap">
-          <span>Location Link (Google Maps) *</span>
-          <input className="text-input" type="url" value={form.locationLink} onChange={field("locationLink")} placeholder="https://maps.google.com/..." required />
-        </label>
-        <div className="form-actions">
-          <button className="btn btn-primary" type="submit" disabled={submitting || !isAdmin}>
-            {submitting ? "Saving…" : editingId ? "Update Station" : "Create Station"}
-          </button>
+      <Box
+        component="form"
+        onSubmit={onSubmit}
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(220px, 1fr))" },
+          gap: 1.5,
+        }}
+      >
+        <TextField
+          label="Station Name"
+          value={form.stationName}
+          onChange={(e) => setForm({ ...form, stationName: e.target.value })}
+          placeholder="e.g. Central EV Hub"
+          required
+          fullWidth
+        />
+        <TextField
+          label="Location Address"
+          value={form.locationAddress}
+          onChange={(e) => setForm({ ...form, locationAddress: e.target.value })}
+          placeholder="e.g. 42 MG Road, Bangalore"
+          required
+          fullWidth
+        />
+        <TextField
+          label="Pin Code"
+          value={form.pinCode}
+          onChange={(e) => setForm({ ...form, pinCode: e.target.value })}
+          placeholder="e.g. 560001"
+          required
+          fullWidth
+        />
+        <FormControl fullWidth>
+          <InputLabel id="connector-type-label">Connector Type</InputLabel>
+          <Select
+            labelId="connector-type-label"
+            label="Connector Type"
+            value={form.connectorType}
+            onChange={(e) => setForm({ ...form, connectorType: e.target.value as ConnectorType })}
+          >
+            {CONNECTOR_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl fullWidth>
+          <InputLabel id="status-label">Status</InputLabel>
+          <Select
+            labelId="status-label"
+            label="Status"
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as StationStatus })}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Image URL (optional)"
+          type="url"
+          value={form.image}
+          onChange={(e) => setForm({ ...form, image: e.target.value })}
+          placeholder="https://example.com/station.jpg"
+          fullWidth
+        />
+        <TextField
+          label="Location Link (Google Maps)"
+          type="url"
+          value={form.locationLink}
+          onChange={(e) => setForm({ ...form, locationLink: e.target.value })}
+          placeholder="https://maps.google.com/..."
+          required
+          fullWidth
+          sx={{ gridColumn: { md: "1 / -1" } }}
+        />
+
+        <Stack direction="row" spacing={1.2} sx={{ gridColumn: { md: "1 / -1" }, mt: 0.5 }}>
+          <Button variant="contained" type="submit" disabled={submitting || !isAdmin}>
+            {submitting ? "Saving..." : editingId ? "Update Station" : "Create Station"}
+          </Button>
           {editingId ? (
-            <button className="btn btn-secondary" type="button" onClick={cancelEdit}>
+            <Button variant="outlined" type="button" onClick={cancelEdit}>
               Cancel Edit
-            </button>
+            </Button>
           ) : null}
-        </div>
-      </form>
+        </Stack>
+      </Box>
 
-      {error   ? <p className="flash flash-error">{error}</p>   : null}
-      {success ? <p className="flash flash-success">{success}</p> : null}
+      <Stack spacing={1} sx={{ mt: 2 }}>
+        {error ? <Alert severity="error">{error}</Alert> : null}
+        {success ? <Alert severity="success">{success}</Alert> : null}
+      </Stack>
     </section>
   );
 };

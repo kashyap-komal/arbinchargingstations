@@ -371,7 +371,7 @@ a:hover {
   flex-wrap: wrap;
 }
 
-/* ─── Buttons ────────────────────────────────────────────── */
+
 .btn {
   padding: 10px 22px;
   border-radius: var(--radius-sm);
@@ -424,7 +424,7 @@ a:hover {
   background: rgba(239, 68, 68, 0.2);
 }
 
-/* ─── Flash Messages ─────────────────────────────────────── */
+
 .flash {
   margin-top: 16px;
   padding: 12px 16px;
@@ -446,7 +446,7 @@ a:hover {
   border: 1px solid rgba(34, 197, 94, 0.25);
 }
 
-/* ─── Cards Section ──────────────────────────────────────── */
+
 .cards-section {
   position: relative;
   z-index: 1;
@@ -483,7 +483,6 @@ a:hover {
   gap: 20px;
 }
 
-/* ─── Station Card ───────────────────────────────────────── */
 .station-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -515,7 +514,6 @@ a:hover {
   line-height: 1.3;
 }
 
-/* ─── Status Pill ────────────────────────────────────────── */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -609,7 +607,6 @@ a:hover {
   padding: 8px 12px;
 }
 
-/* ─── Timestamps ─────────────────────────────────────────── */
 .card-timestamps {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -617,7 +614,7 @@ a:hover {
   padding-top: 4px;
 }
 
-/* ─── Scrollbar ──────────────────────────────────────────── */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
